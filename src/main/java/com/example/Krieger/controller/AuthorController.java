@@ -27,4 +27,26 @@ public class AuthorController {
         throw new SuccessException("Author created successfully", HttpStatus.CREATED, createdAuthor);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<Author>> getAuthorById(@PathVariable Long id) {
+        Author author = authorService.getAuthorById(id);
+        if (author == null) {
+            throw new CustomException("Author not found with ID: " + id, HttpStatus.NOT_FOUND);
+        }
+
+        throw new SuccessException("Author retrieved successfully", HttpStatus.OK, author);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<Author>> updateAuthor(@PathVariable Long id, @RequestBody Author author) {
+        Author updatedAuthor = authorService.updateAuthor(id, author);
+        throw new SuccessException("Author updated successfully", HttpStatus.OK, updatedAuthor);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteAuthor(@PathVariable Long id) {
+        authorService.deleteAuthor(id);
+        throw new SuccessException("Author deleted successfully", HttpStatus.NO_CONTENT, null);
+    }
+
 }
