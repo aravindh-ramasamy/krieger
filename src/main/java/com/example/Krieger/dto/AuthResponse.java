@@ -1,4 +1,4 @@
-package com.example.Krieger.DTO;
+package com.example.Krieger.dto;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
