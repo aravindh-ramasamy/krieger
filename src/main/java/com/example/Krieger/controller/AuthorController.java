@@ -7,6 +7,7 @@ import com.example.Krieger.exception.SuccessException;
 import com.example.Krieger.service.AuthorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +23,7 @@ public class AuthorController {
 
     @Operation(summary = "Create a New Author", description = "Create a New Author.")
     @PostMapping
-    public ResponseEntity<ApiResponse<Author>> createAuthor(@RequestBody Author author) {
+    public ResponseEntity<ApiResponse<Author>> createAuthor(@Valid @RequestBody Author author) {
         if (author.getFirstName() == null || author.getLastName() == null) {
             throw new CustomException("First name or last name cannot be empty", HttpStatus.BAD_REQUEST);
         }
