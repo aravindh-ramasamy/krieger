@@ -1,5 +1,6 @@
 package com.example.Krieger.config;
 
+import com.example.Krieger.config.jwt.JwtAuthenticationEntryPoint;
 import com.example.Krieger.config.services.AuthenticationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -19,6 +20,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class WebSecurityConfig {
 
     private final AuthenticationService authenticationService;
+
+    @Autowired
+    public JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
     @Autowired
     public WebSecurityConfig(AuthenticationService authenticationService) {
@@ -44,7 +48,7 @@ public class WebSecurityConfig {
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                );
+                ).exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint);
         http.addFilterBefore(authenticationService.jwtRequestFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

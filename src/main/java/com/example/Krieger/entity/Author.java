@@ -1,6 +1,7 @@
 package com.example.Krieger.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -17,9 +18,11 @@ public class Author {
     private Long id;
 
     @Column(nullable = false)
+    @NotBlank(message = "firstname is mandatory")
     private String firstName;
 
     @Column(nullable = false)
+    @NotBlank(message = "lastname is mandatory")
     private String lastName;
 
     @OneToMany(mappedBy = "author", cascade = CascadeType.ALL)

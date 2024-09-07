@@ -1,6 +1,7 @@
 package com.example.Krieger.config.jwt;
 
 import com.example.Krieger.config.services.AuthenticationService;
+import com.example.Krieger.exception.InvalidTokenException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,7 +23,14 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        authenticationService.processJwtAuthentication(request);
+        try {
+            authenticationService.processJwtAuthentication(request);
+        } catch (InvalidTokenException e) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{ \"error\": \"Invalid or missing token\" }");
+            return;
+        }
         filterChain.doFilter(request, response);
     }
 }

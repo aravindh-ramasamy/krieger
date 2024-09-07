@@ -5,7 +5,7 @@ FROM openjdk:17-jdk-alpine
 WORKDIR /app
 
 # Copy the application jar file to the container
-COPY target/krieger-0.0.1-SNAPSHOT.jar app.jar
+COPY target/Krieger-0.0.1-SNAPSHOT.jar app.jar
 
 # Port Exposed
 EXPOSE 8080
