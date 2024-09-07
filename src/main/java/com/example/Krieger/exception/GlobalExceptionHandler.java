@@ -1,6 +1,6 @@
 package com.example.Krieger.exception;
 
-import com.example.Krieger.DTO.ApiResponse;
+import com.example.Krieger.dto.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
