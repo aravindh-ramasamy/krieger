@@ -1,5 +1,6 @@
 package com.example.Krieger.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,17 +23,13 @@ public class Document {
     @Column(columnDefinition = "TEXT")
     private String body;
 
-    // Many to Many relationship with author
-    @ManyToMany
-    @JoinTable(
-            name = "document_authors",
-            joinColumns = @JoinColumn(name = "document_id"),
-            inverseJoinColumns = @JoinColumn(name = "author_id")
-    )
-    private List<Author> author;
+    // Many-to-one relationship with author
+    @ManyToOne
+    @JoinColumn(name = "author_id", nullable = false)
+    @JsonIgnore
+    private Author author;
 
-    @OneToMany
-    @JoinColumn(name = "referenced_by_id") // Foreign key in 'Document' table itself
-    private List<Document> references;
+    @Column(name = "\"references\"")
+    private String references;
 }
 

@@ -1,6 +1,7 @@
 package com.example.Krieger.controller;
 
 import com.example.Krieger.dto.ApiResponse;
+import com.example.Krieger.dto.AuthorDTO;
 import com.example.Krieger.entity.Author;
 import com.example.Krieger.exception.CustomException;
 import com.example.Krieger.exception.SuccessException;
@@ -23,7 +24,7 @@ public class AuthorController {
 
     @Operation(summary = "Create a New Author", description = "Create a New Author.")
     @PostMapping
-    public ResponseEntity<ApiResponse<Author>> createAuthor(@Valid @RequestBody Author author) {
+    public ResponseEntity<ApiResponse<Author>> createAuthor(@Valid @RequestBody AuthorDTO author) {
         if (author.getFirstName() == null || author.getLastName() == null) {
             throw new CustomException("First name or last name cannot be empty", HttpStatus.BAD_REQUEST);
         }
@@ -45,7 +46,7 @@ public class AuthorController {
 
     @Operation(summary = "Update an existing author", description = "Update an existing author.")
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<Author>> updateAuthor(@PathVariable Long id, @RequestBody Author author) {
+    public ResponseEntity<ApiResponse<Author>> updateAuthor(@PathVariable Long id, @RequestBody AuthorDTO author) {
         Author updatedAuthor = authorService.updateAuthor(id, author);
         throw new SuccessException("Author updated successfully", HttpStatus.OK, updatedAuthor);
     }
@@ -54,7 +55,7 @@ public class AuthorController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteAuthor(@PathVariable Long id) {
         authorService.deleteAuthor(id);
-        throw new SuccessException("Author deleted successfully", HttpStatus.NO_CONTENT, null);
+        throw new SuccessException("Author deleted successfully", HttpStatus.OK, null);
     }
 
 }
