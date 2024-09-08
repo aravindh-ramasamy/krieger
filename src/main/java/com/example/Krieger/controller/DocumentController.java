@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+//Rest api's for Documents CRUD operations and sends responses
 @RestController
 @RequestMapping("/api/documents")
 @Tag(name = "Document API", description = "API for Documents")

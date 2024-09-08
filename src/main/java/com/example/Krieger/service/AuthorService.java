@@ -16,17 +16,20 @@ public class AuthorService {
     @Autowired
     private RabbitTemplate rabbitTemplate;
 
+    // creates a new author
     public Author createAuthor(Author author) {
         Author savedAuthor = authorRepository.save(author);
         publishAuthorEvent("CREATE", savedAuthor);
         return savedAuthor;
     }
 
+    // Fetches an author byt ID
     public Author getAuthorById(Long id) {
         return authorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Author not found"));
     }
 
+    // Update author by DI
     public Author updateAuthor(Long id, Author authorDetails) {
         Author author = getAuthorById(id);
         author.setFirstName(authorDetails.getFirstName());
@@ -36,12 +39,14 @@ public class AuthorService {
         return updatedAuthor;
     }
 
+    // Delete author by ID
     public void deleteAuthor(Long id) {
         Author author = getAuthorById(id);
         authorRepository.deleteById(id);
         publishAuthorEvent("DELETE", author);
     }
 
+    // Publishes event to Queue with event type
     public void publishAuthorEvent(String eventType, Author author) {
         String message = String.format("%s event: %s", eventType, author.getId());
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, message);

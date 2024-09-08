@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+// Spring configuration for security
 @Configuration
 @EnableWebSecurity
 public class WebSecurityConfig {
@@ -43,13 +44,13 @@ public class WebSecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/authenticate", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .anyRequest().authenticated()
+                        .requestMatchers("/authenticate", "/swagger-ui/**", "/v3/api-docs/**").permitAll() // allows access to specific endpoints
+                        .anyRequest().authenticated() // authenticates requests
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                ).exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint);
-        http.addFilterBefore(authenticationService.jwtRequestFilter(), UsernamePasswordAuthenticationFilter.class);
+                ).exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint); // Exception handling
+        http.addFilterBefore(authenticationService.jwtRequestFilter(), UsernamePasswordAuthenticationFilter.class); // adds filter chain
 
         return http.build();
     }

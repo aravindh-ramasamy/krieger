@@ -25,6 +25,7 @@ public class Author {
     @NotBlank(message = "lastname is mandatory")
     private String lastName;
 
+    // One to Many relation with document, author can have many documents
     @OneToMany(mappedBy = "author", cascade = CascadeType.ALL)
     private List<Document> documents;
 }
