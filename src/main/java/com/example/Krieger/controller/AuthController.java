@@ -27,12 +27,12 @@ public class AuthController {
     @Autowired
     private UserRepository userRepository;
 
-    @Operation(summary = "Authenticate user and generate JWT token", description = "User with username and password.")
+    @Operation(summary = "Authenticate user and generate JWT token", description = "User with username and password.") // Swagger description
     @PostMapping("/authenticate")
     public ResponseEntity<?> createAuthenticationToken(@RequestBody AuthRequest authRequest) throws Exception {
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword()));
         final String jwt = jwtUtil.generateToken(authRequest.getUsername());
-        return ResponseEntity.ok(new AuthResponse(jwt));
+        return ResponseEntity.ok(new AuthResponse(jwt)); // If username exists sends generated JWT token
     }
 
 }

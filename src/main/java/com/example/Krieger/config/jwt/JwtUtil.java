@@ -11,13 +11,15 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
+    // Gets secret from application properties
     @Value("${jwt.secret}")
     private String secret;
 
     private SecretKey getKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
-    }
+    } // converts secret into crypt key
 
+    // Generates JWT Token with username
     public String generateToken(String username) {
         return Jwts.builder()
                 .setSubject(username)
@@ -27,6 +29,7 @@ public class JwtUtil {
                 .compact();
     }
 
+    // Extracts the username from token
     public String extractUsername(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getKey())
@@ -36,10 +39,12 @@ public class JwtUtil {
                 .getSubject();
     }
 
+    // Validates JWT token
     public boolean isTokenValid(String token, String username) {
         return extractUsername(token).equals(username) && !isTokenExpired(token);
     }
 
+    // Checks if the token has expired
     private boolean isTokenExpired(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getKey())

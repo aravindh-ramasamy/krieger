@@ -22,6 +22,7 @@ public class Document {
     @Column(columnDefinition = "TEXT")
     private String body;
 
+    // Many to Many relationship with author
     @ManyToMany
     @JoinTable(
             name = "document_authors",

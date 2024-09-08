@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
 
 @Component
@@ -21,10 +22,11 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         this.authenticationService = authenticationService;
     }
 
+    // This method filters requests and process JWT authentication.
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         try {
-            authenticationService.processJwtAuthentication(request);
+            authenticationService.processJwtAuthentication(request); // Authenticate request based on JWT
         } catch (InvalidTokenException e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");

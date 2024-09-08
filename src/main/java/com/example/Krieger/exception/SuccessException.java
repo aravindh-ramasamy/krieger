@@ -4,8 +4,8 @@ import org.springframework.http.HttpStatus;
 
 public class SuccessException extends RuntimeException {
 
-    private HttpStatus httpStatus;
-    private Object data;
+    private final HttpStatus httpStatus;
+    private final Object data;
 
     public SuccessException(String message, HttpStatus httpStatus, Object data) {
         super(message);

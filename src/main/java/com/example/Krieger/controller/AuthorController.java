@@ -13,7 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-
+//Rest api's for author CRUD operations and sends responses
 @RestController
 @RequestMapping("/api/authors")
 @Tag(name = "Author API", description = "API for Authors")

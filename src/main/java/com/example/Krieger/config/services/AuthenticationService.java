@@ -18,7 +18,7 @@ public class AuthenticationService {
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
 
-    @Autowired
+    @Autowired // Dependency Injection via constructor
     public AuthenticationService(JwtUtil jwtUtil, UserDetailsService userDetailsService) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
@@ -31,10 +31,11 @@ public class AuthenticationService {
         String jwt = null;
 
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            username = jwtUtil.extractUsername(jwt);
+            jwt = authorizationHeader.substring(7); // Token Extraction
+            username = jwtUtil.extractUsername(jwt); // Username Extraction
         }
 
+        // validating username, token expiry, set auth in security context
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 

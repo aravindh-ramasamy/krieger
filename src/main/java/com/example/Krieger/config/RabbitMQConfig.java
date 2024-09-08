@@ -7,9 +7,11 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+// RabbitMQ configuration
 @Configuration
 public class RabbitMQConfig {
 
+    // Setting name for queue, exchange and routing key
     public static final String QUEUE_NAME = "demo_queue";
     public static final String EXCHANGE_NAME = "demo_exchange";
     public static final String ROUTING_KEY = "demo_routing_key";

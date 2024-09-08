@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+// JPA repository for Document
 @Repository
 public interface DocumentRepository extends JpaRepository<Document, Long> {
 

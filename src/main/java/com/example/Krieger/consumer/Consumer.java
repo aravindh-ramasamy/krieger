@@ -19,6 +19,7 @@ public class Consumer {
     @Autowired
     private DocumentRepository documentRepository;
 
+    // Listens for messages from the Queue
     @RabbitListener(queues = RabbitMQConfig.QUEUE_NAME)
     public void consumeMessage(String message) {
         System.out.println("Received message: " + message);
@@ -26,6 +27,7 @@ public class Consumer {
         String eventType = parts[0];
         Long authorId = Long.parseLong(parts[1]);
 
+        // If DELETE event type, It removes the author and their associated documents.
         if ("DELETE".equals(eventType)) {
             List<Document> documents = documentRepository.findByAuthorId(authorId);
             documentRepository.deleteAll(documents);
