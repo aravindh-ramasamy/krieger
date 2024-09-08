@@ -1,6 +1,7 @@
 package com.example.Krieger.service;
 
 import com.example.Krieger.config.RabbitMQConfig;
+import com.example.Krieger.dto.AuthorDTO;
 import com.example.Krieger.entity.Author;
 import com.example.Krieger.exception.ResourceNotFoundException;
 import com.example.Krieger.repository.AuthorRepository;
@@ -17,7 +18,10 @@ public class AuthorService {
     private RabbitTemplate rabbitTemplate;
 
     // creates a new author
-    public Author createAuthor(Author author) {
+    public Author createAuthor(AuthorDTO authorDTO) {
+        Author author = new Author();
+        author.setFirstName(authorDTO.getFirstName());
+        author.setLastName(authorDTO.getLastName());
         Author savedAuthor = authorRepository.save(author);
         publishAuthorEvent("CREATE", savedAuthor);
         return savedAuthor;
@@ -30,7 +34,7 @@ public class AuthorService {
     }
 
     // Update author by DI
-    public Author updateAuthor(Long id, Author authorDetails) {
+    public Author updateAuthor(Long id, AuthorDTO authorDetails) {
         Author author = getAuthorById(id);
         author.setFirstName(authorDetails.getFirstName());
         author.setLastName(authorDetails.getLastName());

@@ -1,6 +1,7 @@
 package com.example.krieger.controller;
 
 import com.example.Krieger.controller.DocumentController;
+import com.example.Krieger.dto.DocumentDTO;
 import com.example.Krieger.entity.Document;
 import com.example.Krieger.exception.CustomException;
 import com.example.Krieger.exception.SuccessException;
@@ -32,32 +33,38 @@ class DocumentControllerTest {
 
     @Test
     void createDocument_Success() {
-        Document mockDocument = new Document();
-        mockDocument.setId(1L);
-        mockDocument.setTitle("Test Document");
-        mockDocument.setBody("This is a test document body.");
+        DocumentDTO mockDocumentDTO = new DocumentDTO();
+        mockDocumentDTO.setId(1L);
+        mockDocumentDTO.setTitle("Test Document");
+        mockDocumentDTO.setBody("This is a test document body.");
+        mockDocumentDTO.setAuthorID(1L);
 
-        when(documentService.createDocument(any(Document.class))).thenReturn(mockDocument);
+        Document mockCreatedDocument = new Document();
+        mockCreatedDocument.setId(1L);
+        mockCreatedDocument.setTitle("Test Document");
+        mockCreatedDocument.setBody("This is a test document body.");
+
+        when(documentService.createDocument(any(DocumentDTO.class))).thenReturn(mockCreatedDocument);
 
         SuccessException thrown = assertThrows(SuccessException.class, () -> {
-            documentController.createDocument(mockDocument);
+            documentController.createDocument(mockDocumentDTO);
         });
 
         assertEquals("Document created successfully", thrown.getMessage());
         assertEquals(HttpStatus.CREATED, thrown.getHttpStatus());
-        assertEquals(mockDocument, thrown.getData());
+        assertEquals(mockCreatedDocument, thrown.getData());
     }
 
     @Test
     void createDocument_MissingTitle() {
-        Document mockDocument = new Document();
-        mockDocument.setBody("This is a test document body.");
+        DocumentDTO mockDocumentDTO = new DocumentDTO();
+        mockDocumentDTO.setBody("This is a test document body.");
 
         CustomException thrown = assertThrows(CustomException.class, () -> {
-            documentController.createDocument(mockDocument);
+            documentController.createDocument(mockDocumentDTO);
         });
 
-        assertEquals("Title or body cannot be empty", thrown.getMessage());
+        assertEquals("Title, author or body cannot be empty", thrown.getMessage());
         assertEquals(HttpStatus.BAD_REQUEST, thrown.getHttpStatus());
     }
 
@@ -82,7 +89,7 @@ class DocumentControllerTest {
         });
 
         assertEquals("Document deleted successfully", thrown.getMessage());
-        assertEquals(HttpStatus.NO_CONTENT, thrown.getHttpStatus());
+        assertEquals(HttpStatus.OK, thrown.getHttpStatus());
         assertNull(thrown.getData());
     }
 }

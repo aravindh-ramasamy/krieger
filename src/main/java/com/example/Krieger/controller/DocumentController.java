@@ -1,6 +1,7 @@
 package com.example.Krieger.controller;
 
 import com.example.Krieger.dto.ApiResponse;
+import com.example.Krieger.dto.DocumentDTO;
 import com.example.Krieger.entity.Document;
 import com.example.Krieger.exception.CustomException;
 import com.example.Krieger.exception.SuccessException;
@@ -23,9 +24,9 @@ public class DocumentController {
 
     @Operation(summary = "Create a New Document", description = "Create a New Document.")
     @PostMapping
-    public ResponseEntity<ApiResponse<Document>> createDocument(@RequestBody Document document) {
-        if (document.getTitle() == null || document.getBody() == null) {
-            throw new CustomException("Title or body cannot be empty", HttpStatus.BAD_REQUEST);
+    public ResponseEntity<ApiResponse<Document>> createDocument(@RequestBody DocumentDTO document) {
+        if (document.getTitle() == null || document.getBody() == null || document.getAuthorID() == null) {
+            throw new CustomException("Title, author or body cannot be empty", HttpStatus.BAD_REQUEST);
         }
 
         Document createdDocument = documentService.createDocument(document);
@@ -45,7 +46,7 @@ public class DocumentController {
 
     @Operation(summary = "Update a Existing Document", description = "Update a Existing Document by ID.")
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<Document>> updateDocument(@PathVariable Long id, @RequestBody Document document) {
+    public ResponseEntity<ApiResponse<Document>> updateDocument(@PathVariable Long id, @RequestBody DocumentDTO document) {
         Document updatedDocument = documentService.updateDocument(id, document);
         throw new SuccessException("Document updated successfully", HttpStatus.OK, updatedDocument);
     }
@@ -54,6 +55,6 @@ public class DocumentController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteDocument(@PathVariable Long id) {
         documentService.deleteDocument(id);
-        throw new SuccessException("Document deleted successfully", HttpStatus.NO_CONTENT, null);
+        throw new SuccessException("Document deleted successfully", HttpStatus.OK, null);
     }
 }
