@@ -22,6 +22,7 @@ public class DocumentController {
     @Autowired
     private DocumentService documentService;
 
+    // Create a document
     @Operation(summary = "Create a New Document", description = "Create a New Document.")
     @PostMapping
     public ResponseEntity<ApiResponse<Document>> createDocument(@RequestBody DocumentDTO document) {
@@ -33,6 +34,7 @@ public class DocumentController {
         throw new SuccessException("Document created successfully", HttpStatus.CREATED, createdDocument);
     }
 
+    // Fetch a document by ID
     @Operation(summary = "Get a Document", description = "Get a Document by ID.")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<Document>> getDocumentById(@PathVariable Long id) {
@@ -44,6 +46,7 @@ public class DocumentController {
         throw new SuccessException("Document retrieved successfully", HttpStatus.OK, document);
     }
 
+    // Update a document by ID
     @Operation(summary = "Update a Existing Document", description = "Update a Existing Document by ID.")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<Document>> updateDocument(@PathVariable Long id, @RequestBody DocumentDTO document) {
@@ -51,6 +54,7 @@ public class DocumentController {
         throw new SuccessException("Document updated successfully", HttpStatus.OK, updatedDocument);
     }
 
+    // Delete a Document by ID
     @Operation(summary = "Delete a Existing Document", description = "Delete a Existing Document by ID.")
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteDocument(@PathVariable Long id) {

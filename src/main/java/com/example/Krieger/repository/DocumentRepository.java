@@ -10,5 +10,5 @@ import java.util.List;
 @Repository
 public interface DocumentRepository extends JpaRepository<Document, Long> {
 
-    List<Document> findByAuthorId(Long authorId);
+    List<Document> findByAuthorId(Long authorId); // finds document by author ID
 }

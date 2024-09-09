@@ -24,13 +24,13 @@ public class DocumentService {
         document.setBody(documentDTO.getBody());
         document.setTitle(documentDTO.getTitle());
         document.setReferences(documentDTO.getReference());
-        Author author = authorRepository.findById(documentDTO.getAuthorID())
+        Author author = authorRepository.findById(documentDTO.getAuthorID()) // gets the author by ID and maps it to document
                 .orElseThrow(() -> new ResourceNotFoundException("Author not found with ID: " + documentDTO.getAuthorID()));
         document.setAuthor(author);
-        return documentRepository.save(document);
+        return documentRepository.save(document); // saves the created document
     }
 
-    // Fetches Document by ID
+    // Fetches Document by ID if ID not found throws
     public Document getDocumentById(Long id) {
         return documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document not found"));
@@ -41,11 +41,11 @@ public class DocumentService {
         Document document = getDocumentById(id);
         document.setTitle(documentDetails.getTitle());
         document.setBody(documentDetails.getBody());
-        Author author = authorRepository.findById(documentDetails.getAuthorID())
+        Author author = authorRepository.findById(documentDetails.getAuthorID()) // gets the author by ID and maps it to document
                 .orElseThrow(() -> new ResourceNotFoundException("Author not found with ID: " + documentDetails.getAuthorID()));
         document.setAuthor(author);
         document.setReferences(documentDetails.getReference());
-        return documentRepository.save(document);
+        return documentRepository.save(document); // saves the updated document
     }
 
     // Deletes Document by ID

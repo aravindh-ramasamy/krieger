@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+// Format the response in format
 @Getter
 @Setter
 @NoArgsConstructor

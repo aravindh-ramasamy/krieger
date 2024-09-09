@@ -17,7 +17,7 @@ public class SwaggerConfig {
                 .info(new Info().title("Document and Author Management Web Application").version("1.0"))
                 .addSecurityItem(new SecurityRequirement().addList("Bearer Authentication"))
                 .components(new Components()
-                        .addSecuritySchemes("Bearer Authentication", new SecurityScheme()
+                        .addSecuritySchemes("Bearer Authentication", new SecurityScheme() // enabling the token view
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
