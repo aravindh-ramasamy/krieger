@@ -30,6 +30,7 @@ public class WebSecurityConfig {
         this.authenticationService = authenticationService;
     }
 
+    // password encoder
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

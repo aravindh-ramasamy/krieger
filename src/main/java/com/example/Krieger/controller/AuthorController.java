@@ -22,6 +22,7 @@ public class AuthorController {
     @Autowired
     private AuthorService authorService;
 
+    //To create new author
     @Operation(summary = "Create a New Author", description = "Create a New Author.")
     @PostMapping
     public ResponseEntity<ApiResponse<Author>> createAuthor(@Valid @RequestBody AuthorDTO author) {
@@ -33,6 +34,7 @@ public class AuthorController {
         throw new SuccessException("Author created successfully", HttpStatus.CREATED, createdAuthor);
     }
 
+    // To fetch author by ID
     @Operation(summary = "Retrieve an author by ID", description = "Get an author by specific ID.")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<Author>> getAuthorById(@PathVariable Long id) {
@@ -44,6 +46,7 @@ public class AuthorController {
         throw new SuccessException("Author retrieved successfully", HttpStatus.OK, author);
     }
 
+    // Update author by ID
     @Operation(summary = "Update an existing author", description = "Update an existing author.")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<Author>> updateAuthor(@PathVariable Long id, @RequestBody AuthorDTO author) {
@@ -51,6 +54,7 @@ public class AuthorController {
         throw new SuccessException("Author updated successfully", HttpStatus.OK, updatedAuthor);
     }
 
+    // Delete an author by ID
     @Operation(summary = "Delete an existing author", description = "Delete an existing author.")
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteAuthor(@PathVariable Long id) {
