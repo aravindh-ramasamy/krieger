@@ -220,3 +220,18 @@ docker-compose up --build
 
 The project includes a `Dockerfile` for containerizing the Spring Boot application. This allows you to run the entire application in a Docker container.
 
+WorkFlow:
+
+- Users log in using the /authenticate endpoint, receive a JWT token, and use it for secure access to protected API endpoints.
+- Spring Security with JWT ensures only authenticated users can access the services.
+- Users can add, view, update, and delete authors using the /authors endpoints.
+- Events are published to RabbitMQ when authors are created, updated, or deleted.
+- Users can add, view, update, and delete documents using the /documents endpoints.
+- Each document is linked to an author and includes references.
+- When an author is deleted, an event is sent to RabbitMQ.
+- A consumer listens for the event and deletes all documents associated with that author.
+- Custom exceptions and a global exception handler provide meaningful error messages for invalid requests or server errors.
+- Swagger provides an interactive API documentation interface accessible via /swagger-ui.html for testing and viewing API endpoints.
+- Unit tests are implemented using JUnit and Mockito to ensure the functionality of the core features (author, document services, JWT, etc.).
+- The application, PostgreSQL, and RabbitMQ are containerized using Docker and can be run via docker-compose.
+
