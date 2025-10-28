@@ -52,7 +52,7 @@ public class AuthorService {
 
     // Publishes event to Queue with event type
     public void publishAuthorEvent(String eventType, Author author) {
-        String message = String.format("%s event: %s", eventType, author.getId());
+        String message = eventType + ": " + author.getId();
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, message);
     }
 
