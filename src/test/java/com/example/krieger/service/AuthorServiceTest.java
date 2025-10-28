@@ -56,7 +56,7 @@ class AuthorServiceTest {
         verify(rabbitTemplate, times(1)).convertAndSend(
                 RabbitMQConfig.EXCHANGE_NAME,
                 RabbitMQConfig.ROUTING_KEY,
-                "CREATE event: " + createdAuthor.getId()  // verify RabbitMQ message is published
+                "CREATE: " + createdAuthor.getId()  // verify RabbitMQ message is published
         );
     }
 
@@ -85,7 +85,7 @@ class AuthorServiceTest {
         verify(rabbitTemplate, times(1)).convertAndSend(
                 RabbitMQConfig.EXCHANGE_NAME,
                 RabbitMQConfig.ROUTING_KEY,
-                "DELETE event: " + mockAuthor.getId()
+                "DELETE: " + mockAuthor.getId()
         );
     }
 }
