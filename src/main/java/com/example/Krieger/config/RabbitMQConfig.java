@@ -18,7 +18,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue queue() {
-        return new Queue(QUEUE_NAME, false);
+        return org.springframework.amqp.core.QueueBuilder.durable(QUEUE_NAME).build();
     }
 
     @Bean

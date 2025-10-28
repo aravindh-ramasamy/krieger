@@ -23,9 +23,16 @@ public class Consumer {
     @RabbitListener(queues = RabbitMQConfig.QUEUE_NAME)
     public void consumeMessage(String message) {
         System.out.println("Received message: " + message);
-        String[] parts = message.split(": ");
-        String eventType = parts[0];
-        Long authorId = Long.parseLong(parts[1]);
+        // Accept only "<EVENT>: <numericId>"
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("^([A-Z]+):\\s*(\\d+)$")
+                .matcher(message == null ? "" : message.trim());
+        if (!m.matches()) {
+            System.out.println("Ignoring malformed message: " + message);
+            return;
+        }
+        String eventType = m.group(1);
+        Long authorId = Long.parseLong(m.group(2));
 
         // If DELETE event type, It removes the author and their associated documents.
         if ("DELETE".equals(eventType)) {
