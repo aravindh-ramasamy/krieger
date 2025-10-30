@@ -30,22 +30,22 @@ public class Consumer {
     public void consumeMessage(String message) {
         log.info("Received message: {}", message);
 
-        java.util.Optional<EventCodec.DecodedEvent> decoded = EventCodec.decode(message);
-        if (decoded.isEmpty()) {
+        var decodedOpt = EventCodec.decode(message);
+        if (decodedOpt.isEmpty()) {
             log.warn("Ignoring malformed message: {}", message);
             return;
         }
 
-        EventCodec.DecodedEvent evt = decoded.get();
-        EventType eventType = evt.getType();
-        Long authorId = evt.getId();
-
-        // If DELETE event type, remove the author and their associated documents.
-        if (eventType == EventType.DELETE) {
-            java.util.List<Document> documents = documentRepository.findByAuthorId(authorId);
-            documentRepository.deleteAll(documents);
-            authorRepository.deleteById(authorId);
-            log.info("Author {} and documents deleted", authorId);
+        var decoded = decodedOpt.get();
+        if (decoded.getType() != EventType.DELETE) {
+            log.debug("Ignoring non-DELETE event: {}", decoded.getType());
+            return;
         }
+
+        long authorId = decoded.getId();
+        java.util.List<Document> documents = documentRepository.findByAuthorId(authorId);
+        documentRepository.deleteAll(documents);
+        authorRepository.deleteById(authorId);
+        log.info("Author {} and documents deleted", authorId);
     }
 }
