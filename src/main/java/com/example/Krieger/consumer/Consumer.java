@@ -4,13 +4,9 @@ import com.example.Krieger.config.RabbitMQConfig;
 import com.example.Krieger.entity.Document;
 import com.example.Krieger.repository.AuthorRepository;
 import com.example.Krieger.repository.DocumentRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import com.example.Krieger.messaging.EventCodec;
-import com.example.Krieger.messaging.EventType;
 
 import java.util.List;
 
@@ -23,29 +19,27 @@ public class Consumer {
     @Autowired
     private DocumentRepository documentRepository;
 
-    private static final Logger log = LoggerFactory.getLogger(Consumer.class);
-
     // Listens for messages from the Queue
     @RabbitListener(queues = RabbitMQConfig.QUEUE_NAME)
     public void consumeMessage(String message) {
-        log.info("Received message: {}", message);
-
-        java.util.Optional<EventCodec.DecodedEvent> decoded = EventCodec.decode(message);
-        if (decoded.isEmpty()) {
-            log.warn("Ignoring malformed message: {}", message);
+        System.out.println("Received message: " + message);
+        // Accept only "<EVENT>: <numericId>"
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("^([A-Z]+):\\s*(\\d+)$")
+                .matcher(message == null ? "" : message.trim());
+        if (!m.matches()) {
+            System.out.println("Ignoring malformed message: " + message);
             return;
         }
+        String eventType = m.group(1);
+        Long authorId = Long.parseLong(m.group(2));
 
-        EventCodec.DecodedEvent evt = decoded.get();
-        EventType eventType = evt.getType();
-        Long authorId = evt.getId();
-
-        // If DELETE event type, remove the author and their associated documents.
-        if (eventType == EventType.DELETE) {
-            java.util.List<Document> documents = documentRepository.findByAuthorId(authorId);
+        // If DELETE event type, It removes the author and their associated documents.
+        if ("DELETE".equals(eventType)) {
+            List<Document> documents = documentRepository.findByAuthorId(authorId);
             documentRepository.deleteAll(documents);
             authorRepository.deleteById(authorId);
-            log.info("Author {} and documents deleted", authorId);
+            System.out.println("Author and documents deleted");
         }
     }
 }
