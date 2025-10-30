@@ -3,14 +3,17 @@ package com.example.Krieger.service;
 import com.example.Krieger.config.RabbitMQConfig;
 import com.example.Krieger.dto.AuthorDTO;
 import com.example.Krieger.entity.Author;
+import com.example.Krieger.exception.CustomException;
 import com.example.Krieger.exception.ResourceNotFoundException;
 import com.example.Krieger.repository.AuthorRepository;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthorService {
+
     @Autowired
     private AuthorRepository authorRepository;
 
@@ -19,25 +22,42 @@ public class AuthorService {
 
     // creates a new author
     public Author createAuthor(AuthorDTO authorDTO) {
+        String fn = normalize(authorDTO.getFirstName());
+        String ln = normalize(authorDTO.getLastName());
+
+        // 409 if another author with same (firstName, lastName) exists
+        if (authorRepository.existsByFirstNameAndLastName(fn, ln)) {
+            throw new CustomException("Author already exists: " + fn + " " + ln, HttpStatus.CONFLICT);
+        }
+
         Author author = new Author();
-        author.setFirstName(authorDTO.getFirstName());
-        author.setLastName(authorDTO.getLastName());
+        author.setFirstName(fn);
+        author.setLastName(ln);
         Author savedAuthor = authorRepository.save(author);
         publishAuthorEvent("CREATE", savedAuthor);
         return savedAuthor;
     }
 
-    // Fetches an author byt ID
+    // Fetches an author by ID
     public Author getAuthorById(Long id) {
         return authorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Author not found"));
     }
 
-    // Update author by DI
+    // Update author by ID
     public Author updateAuthor(Long id, AuthorDTO authorDetails) {
         Author author = getAuthorById(id);
-        author.setFirstName(authorDetails.getFirstName());
-        author.setLastName(authorDetails.getLastName());
+
+        String newFn = normalize(authorDetails.getFirstName());
+        String newLn = normalize(authorDetails.getLastName());
+
+        boolean nameChanged = !safeEq(author.getFirstName(), newFn) || !safeEq(author.getLastName(), newLn);
+        if (nameChanged && authorRepository.existsByFirstNameAndLastNameAndIdNot(newFn, newLn, id)) {
+            throw new CustomException("Another author already uses: " + newFn + " " + newLn, HttpStatus.CONFLICT);
+        }
+
+        author.setFirstName(newFn);
+        author.setLastName(newLn);
         Author updatedAuthor = authorRepository.save(author);
         publishAuthorEvent("UPDATE", updatedAuthor);
         return updatedAuthor;
@@ -56,5 +76,12 @@ public class AuthorService {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, message);
     }
 
-}
+    // helpers
+    private static String normalize(String s) {
+        return s == null ? null : s.trim();
+    }
 
+    private static boolean safeEq(String a, String b) {
+        return (a == null && b == null) || (a != null && a.equals(b));
+    }
+}
