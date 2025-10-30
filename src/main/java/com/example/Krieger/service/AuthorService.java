@@ -8,11 +8,6 @@ import com.example.Krieger.repository.AuthorRepository;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import com.example.Krieger.messaging.EventCodec;
-import com.example.Krieger.messaging.EventType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 
 @Service
 public class AuthorService {
@@ -21,8 +16,6 @@ public class AuthorService {
 
     @Autowired
     private RabbitTemplate rabbitTemplate;
-
-    private static final Logger log = LoggerFactory.getLogger(AuthorService.class);
 
     // creates a new author
     public Author createAuthor(AuthorDTO authorDTO) {
@@ -59,22 +52,9 @@ public class AuthorService {
 
     // Publishes event to Queue with event type
     public void publishAuthorEvent(String eventType, Author author) {
-        if (author == null || author.getId() == null) {
-            log.warn("publishAuthorEvent called with null author or id; skipping");
-            return;
-        }
-        EventType type = EventType.fromString(eventType);
-        if (type == null) {
-            log.warn("Unknown eventType '{}'; skipping publish", eventType);
-            return;
-        }
-        String payload = EventCodec.encode(type, author.getId());
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfig.EXCHANGE_NAME,
-                RabbitMQConfig.ROUTING_KEY,
-                payload
-        );
-        log.debug("Published author event: {}", payload);
+        String message = eventType + ": " + author.getId();
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, message);
     }
+
 }
 

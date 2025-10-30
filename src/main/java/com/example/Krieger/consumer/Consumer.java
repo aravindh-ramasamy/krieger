@@ -4,13 +4,9 @@ import com.example.Krieger.config.RabbitMQConfig;
 import com.example.Krieger.entity.Document;
 import com.example.Krieger.repository.AuthorRepository;
 import com.example.Krieger.repository.DocumentRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import com.example.Krieger.messaging.EventCodec;
-import com.example.Krieger.messaging.EventType;
 
 import java.util.List;
 
@@ -23,8 +19,6 @@ public class Consumer {
     @Autowired
     private DocumentRepository documentRepository;
 
-    private static final Logger log = LoggerFactory.getLogger(Consumer.class);
-
     // Listens for messages from the Queue
     @RabbitListener(queues = RabbitMQConfig.QUEUE_NAME)
     public void consumeMessage(String message) {
@@ -35,6 +29,8 @@ public class Consumer {
             log.warn("Ignoring malformed message: {}", message);
             return;
         }
+        String eventType = m.group(1);
+        Long authorId = Long.parseLong(m.group(2));
 
         var decoded = decodedOpt.get();
         if (decoded.getType() != EventType.DELETE) {
