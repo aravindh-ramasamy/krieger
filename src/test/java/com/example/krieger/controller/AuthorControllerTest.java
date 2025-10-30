@@ -3,75 +3,89 @@ package com.example.krieger.controller;
 import com.example.Krieger.controller.AuthorController;
 import com.example.Krieger.dto.AuthorDTO;
 import com.example.Krieger.entity.Author;
-import com.example.Krieger.exception.CustomException;
-import com.example.Krieger.exception.SuccessException;
+import com.example.Krieger.exception.GlobalExceptionHandler;
+import com.example.Krieger.exception.ValidationExceptionHandler;
 import com.example.Krieger.service.AuthorService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * Adjust endpoint paths if your controller base mapping differs.
+ * Assumes @RequestMapping("/api/authors") on AuthorController.
+ */
+@WebMvcTest(controllers = AuthorController.class)
+@AutoConfigureMockMvc(addFilters = false)
+@Import({ValidationExceptionHandler.class, GlobalExceptionHandler.class})
 class AuthorControllerTest {
 
-    @Mock
+    @Autowired
+    private MockMvc mvc;
+
+    @MockBean
     private AuthorService authorService;
 
-    @InjectMocks
-    private AuthorController authorController;
+    @MockBean
+    private com.example.Krieger.config.jwt.JwtRequestFilter jwtRequestFilter;
 
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-    }
+    @MockBean
+    private com.example.Krieger.config.services.AuthenticationService authenticationService;
 
     @Test
-    void createAuthor() {
-        AuthorDTO mockAuthorDTO = new AuthorDTO();
-        mockAuthorDTO.setFirstName("John");
-        mockAuthorDTO.setLastName("Doe");
-        Author mockAuthor = new Author();
-        mockAuthor.setFirstName("John");
-        mockAuthor.setLastName("Doe");
-        when(authorService.createAuthor(any(AuthorDTO.class))).thenReturn(mockAuthor);
-        SuccessException thrown = assertThrows(SuccessException.class, () -> {
-            authorController.createAuthor(mockAuthorDTO);
-        });
+    void createAuthor_valid_returns201() throws Exception {
+        // Arrange: mock service return
+        Author saved = new Author();
+        saved.setId(1L);
+        saved.setFirstName("John");
+        saved.setLastName("Doe");
+        when(authorService.createAuthor(any(AuthorDTO.class))).thenReturn(saved);
 
+        // Act + Assert: valid payload -> 201 Created
+        String body = "{ \"firstName\": \"John\", \"lastName\": \"Doe\" }";
 
-        assertEquals("Author created successfully", thrown.getMessage());
-        assertEquals(mockAuthor, thrown.getData());
-        assertEquals(HttpStatus.CREATED, thrown.getHttpStatus());
+        mvc.perform(post("/api/authors")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated());
+
         verify(authorService, times(1)).createAuthor(any(AuthorDTO.class));
     }
 
     @Test
-    void createAuthorEmptyFields() {
-        AuthorDTO mockAuthor = new AuthorDTO();
+    void getAuthorById_notFound_returns404() throws Exception {
+        when(authorService.getAuthorById(1L)).thenReturn(null);
 
-        CustomException thrown = assertThrows(CustomException.class, () -> {
-            authorController.createAuthor(mockAuthor);
-        });
+        mvc.perform(get("/api/authors/1"))
+                .andExpect(status().isNotFound());
 
-        assertEquals("First name or last name cannot be empty", thrown.getMessage());
-        verify(authorService, never()).createAuthor(any(AuthorDTO.class));
+        verify(authorService, times(1)).getAuthorById(1L);
     }
 
     @Test
-    void getAuthorByIdNotFound() {
-        when(authorService.getAuthorById(1L)).thenReturn(null);
+    void createAuthor_missingFirstName_returns400_withFieldError() throws Exception {
+        // Missing firstName -> should be 400 with field error; service must not be called
+        String body = "{ \"lastName\": \"Doe\" }";
 
-        CustomException thrown = assertThrows(CustomException.class, () -> {
-            authorController.getAuthorById(1L);
-        });
+        mvc.perform(post("/api/authors")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors[?(@.field=='firstName')]").exists());
 
-        assertEquals("Author not found with ID: 1", thrown.getMessage());
+        verifyNoInteractions(authorService);
     }
-
 }
