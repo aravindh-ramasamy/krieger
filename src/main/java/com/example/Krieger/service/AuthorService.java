@@ -2,6 +2,7 @@ package com.example.Krieger.service;
 
 import com.example.Krieger.config.RabbitMQConfig;
 import com.example.Krieger.dto.AuthorDTO;
+import com.example.Krieger.dto.AuthorSummaryDTO;
 import com.example.Krieger.entity.Author;
 import com.example.Krieger.exception.CustomException;
 import com.example.Krieger.exception.ResourceNotFoundException;
@@ -10,6 +11,9 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 @Service
 public class AuthorService {
@@ -74,6 +78,16 @@ public class AuthorService {
     public void publishAuthorEvent(String eventType, Author author) {
         String message = eventType + ": " + author.getId();
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, message);
+    }
+
+    public java.util.List<AuthorSummaryDTO> searchAuthorsAsDtos(String query, int page, int size) {
+        String q = query == null ? "" : query.trim();
+        Sort sort = Sort.by("lastName").ascending().and(Sort.by("firstName").ascending());
+        PageRequest pr = PageRequest.of(page, size, sort);
+        Page<Author> p = authorRepository.searchByName(q, pr);
+        return p.getContent().stream()
+                .map(a -> new AuthorSummaryDTO(a.getId(), a.getFirstName(), a.getLastName()))
+                .toList();
     }
 
     // helpers
