@@ -2,6 +2,7 @@ package com.example.Krieger.controller;
 
 import com.example.Krieger.dto.ApiResponse;
 import com.example.Krieger.dto.AuthorDTO;
+import com.example.Krieger.dto.AuthorSummaryDTO;
 import com.example.Krieger.entity.Author;
 import com.example.Krieger.exception.CustomException;
 import com.example.Krieger.exception.SuccessException;
@@ -9,12 +10,17 @@ import com.example.Krieger.service.AuthorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 // Rest API for author CRUD operations and sends responses
 @RestController
@@ -61,5 +67,16 @@ public class AuthorController {
     public ResponseEntity<ApiResponse<Void>> deleteAuthor(@PathVariable @Positive Long id) {
         authorService.deleteAuthor(id);
         throw new SuccessException("Author deleted successfully", HttpStatus.OK, null);
+    }
+
+    @GetMapping("/search")
+    public Object searchAuthors(
+            @RequestParam("query") @NotBlank(message = "query must not be blank") String query,
+            @RequestParam(name = "page", defaultValue = "0") @Min(0) int page,
+            @RequestParam(name = "size", defaultValue = "10") @Min(1) @Max(100) int size
+    ) {
+        List<AuthorSummaryDTO> dtoList  = authorService.searchAuthorsAsDtos(query, page, size);
+        // Follow your SuccessException mapping pattern
+        return ResponseEntity.ok(dtoList);
     }
 }
