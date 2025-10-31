@@ -15,7 +15,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(classes = KriegerApplication.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -43,7 +43,10 @@ class AuthorSearchApiTest {
         mvc.perform(get("/api/authors/search")
                         .contentType(MediaType.APPLICATION_JSON)
                         .param("query", "jo"))
-                .andExpect(status().isOk());  // before feature: 404 (fails), after: 200 (passes)
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(2));
     }
 
     @Test
@@ -51,6 +54,9 @@ class AuthorSearchApiTest {
         mvc.perform(get("/api/authors/search")
                         .contentType(MediaType.APPLICATION_JSON)
                         .param("query", "zzzzzz"))
-                .andExpect(status().isOk());  // before: 404 (fails), after: 200 (passes)
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(0));
     }
 }

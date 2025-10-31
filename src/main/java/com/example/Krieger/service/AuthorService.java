@@ -15,6 +15,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
+import java.util.List;
+
 @Service
 public class AuthorService {
 
@@ -40,12 +42,6 @@ public class AuthorService {
         Author savedAuthor = authorRepository.save(author);
         publishAuthorEvent("CREATE", savedAuthor);
         return savedAuthor;
-    }
-
-    // Fetches an author by ID
-    public Author getAuthorById(Long id) {
-        return authorRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Author not found"));
     }
 
     // Update author by ID
@@ -80,14 +76,17 @@ public class AuthorService {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, message);
     }
 
-    public java.util.List<AuthorSummaryDTO> searchAuthorsAsDtos(String query, int page, int size) {
+    public List<AuthorSummaryDTO> searchAuthorsAsDtos(String query, int page, int size, Sort sort) {
         String q = query == null ? "" : query.trim();
-        Sort sort = Sort.by("lastName").ascending().and(Sort.by("firstName").ascending());
         PageRequest pr = PageRequest.of(page, size, sort);
-        Page<Author> p = authorRepository.searchByName(q, pr);
-        return p.getContent().stream()
+        Page<Author> result = authorRepository.searchByName(q, pr);
+        return result.getContent().stream()
                 .map(a -> new AuthorSummaryDTO(a.getId(), a.getFirstName(), a.getLastName()))
                 .toList();
+    }
+
+    public Author getAuthorById(Long id) {
+        return authorRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Author not found with ID: " + id));
     }
 
     // helpers

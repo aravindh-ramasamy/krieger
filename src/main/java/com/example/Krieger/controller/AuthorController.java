@@ -15,12 +15,16 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 
 // Rest API for author CRUD operations and sends responses
 @RestController
@@ -41,17 +45,6 @@ public class AuthorController {
         throw new SuccessException("Author created successfully", HttpStatus.CREATED, createdAuthor);
     }
 
-    // Retrieve author by ID
-    @Operation(summary = "Retrieve an author by ID", description = "Get an author by specific ID.")
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<Author>> getAuthorById(@PathVariable @Positive Long id) {
-        Author author = authorService.getAuthorById(id);
-        if (author == null) {
-            throw new CustomException("Author not found with ID: " + id, HttpStatus.NOT_FOUND);
-        }
-        throw new SuccessException("Author retrieved successfully", HttpStatus.OK, author);
-    }
-
     // Update author by ID
     @Operation(summary = "Update an existing author", description = "Update an existing author.")
     @PutMapping("/{id}")
@@ -70,13 +63,43 @@ public class AuthorController {
     }
 
     @GetMapping("/search")
-    public Object searchAuthors(
+    public ResponseEntity<?> searchAuthors(
             @RequestParam("query") @NotBlank(message = "query must not be blank") String query,
             @RequestParam(name = "page", defaultValue = "0") @Min(0) int page,
-            @RequestParam(name = "size", defaultValue = "10") @Min(1) @Max(100) int size
-    ) {
-        List<AuthorSummaryDTO> dtoList  = authorService.searchAuthorsAsDtos(query, page, size);
-        // Follow your SuccessException mapping pattern
+            @RequestParam(name = "size", defaultValue = "10") @Min(1) @Max(100) int size,
+            @RequestParam(name = "sort", required = false) String sortParam // e.g. lastName,asc;firstName,asc
+    )   {
+        Sort sort = parseSort(sortParam).orElseGet(() ->
+                Sort.by("lastName").ascending().and(Sort.by("firstName").ascending())
+        );
+        List<AuthorSummaryDTO> dtoList = authorService.searchAuthorsAsDtos(query, page, size, sort);
         return ResponseEntity.ok(dtoList);
+    }
+
+    @GetMapping("/{id}")
+    public Object getAuthorById(@PathVariable Long id) {
+        Author author = authorService.getAuthorById(id);
+        if (author == null) {
+            throw new CustomException("Author not found with ID: " + id, HttpStatus.NOT_FOUND);
+        }
+        // your project uses SuccessException for 2xx elsewhere; return 200 plainly here is also fine:
+        return ResponseEntity.ok(author);
+    }
+
+    private Optional<Sort> parseSort(String sortParam) {
+        if (sortParam == null || sortParam.isBlank()) return Optional.empty();
+        // format: field,dir;field2,dir2 (dir in [asc,desc], case-insensitive)
+        String[] parts = sortParam.split(";");
+        List<Sort.Order> orders = new ArrayList<>();
+        for (String p : parts) {
+            String[] seg = p.trim().split(",", 2);
+            if (seg.length == 0 || seg[0].isBlank()) continue;
+            String prop = seg[0].trim();
+            String dir = seg.length > 1 ? seg[1].trim().toLowerCase(Locale.ROOT) : "asc";
+            Sort.Order o = "desc".equals(dir) ? Sort.Order.desc(prop) : Sort.Order.asc(prop);
+            orders.add(o);
+        }
+        if (orders.isEmpty()) return Optional.empty();
+        return Optional.of(Sort.by(orders));
     }
 }
