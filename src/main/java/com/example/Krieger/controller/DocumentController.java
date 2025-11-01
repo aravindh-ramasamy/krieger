@@ -11,10 +11,18 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * REST API for Document CRUD operations.
@@ -85,7 +93,66 @@ public class DocumentController {
         throw new SuccessException("Document deleted successfully", HttpStatus.OK, null);
     }
 
-    // --------------- helpers ----------------
+    // List / search documents with pagination & sorting
+    @Operation(summary = "List Documents", description = "Paginated list with optional filters: authorId, q (case-insensitive search).")
+    @GetMapping
+    public ResponseEntity<ApiResponse<PageResult<Document>>> listDocuments(
+            @RequestParam(value = "authorId", required = false) Long authorId,
+            @RequestParam(value = "q", required = false) String q,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size,
+            @RequestParam(value = "sort", defaultValue = "id,desc") String sortExpr) {
+
+        // sanitize + clamp
+        q = trimToNull(q);
+        if (page < 0) page = 0;
+        if (size < 1) size = 1;
+        if (size > 100) size = 100;
+
+        Sort sort = parseSort(sortExpr);
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<Document> pageData = documentService.searchDocuments(authorId, q, pageable);
+        String normalizedSortExpr = (sortExpr == null || sortExpr.isBlank()) ? "id,desc"
+                : sortExpr.trim();
+
+        PageResult<Document> body = PageResult.of(pageData, normalizedSortExpr, authorId, q);
+
+        throw new SuccessException("Documents retrieved successfully", HttpStatus.OK, body);
+    }
+
+    // ---- helpers for pagination response & sort parsing ----
+    private static Sort parseSort(String sortExpr) {
+        if (sortExpr == null || sortExpr.isBlank()) return Sort.by(Sort.Direction.DESC, "id");
+        String[] parts = sortExpr.split(",", 2);
+        String field = parts[0].trim().isEmpty() ? "id" : parts[0].trim();
+        Sort.Direction dir = (parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim()))
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
+        return Sort.by(dir, field);
+    }
+
+    public record PageResult<T>(
+            List<T> items,
+            int page,
+            int size,
+            long totalElements,
+            int totalPages,
+            String sort,
+            Map<String, Object> filters
+    ) {
+        static <T> PageResult<T> of(Page<T> p, String sortExpr, Long authorId, String q) {
+            Map<String, Object> f = new LinkedHashMap<>();
+            if (authorId != null) f.put("authorId", authorId);
+            if (q != null) f.put("q", q);
+            return new PageResult<>(
+                    p.getContent(), p.getNumber(), p.getSize(),
+                    p.getTotalElements(), p.getTotalPages(),
+                    sortExpr, f
+            );
+        }
+    }
+
+// --------------- helpers ----------------
     /** Trim title/body/reference and convert blanks to null so controller checks behave as intended. */
     private static void sanitize(DocumentDTO dto) {
         if (dto == null) return;
@@ -99,4 +166,6 @@ public class DocumentController {
         String t = s.trim();
         return t.isEmpty() ? null : t;
     }
+
+
 }
