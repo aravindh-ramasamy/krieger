@@ -21,4 +21,11 @@ public class ApiResponse<T> {
         this.data = data;
     }
 
+    public static <T> ApiResponse<T> success(String msg, int code, T data) {
+        return new ApiResponse<>(msg, "SUCCESS", code, data);
+    }
+
+    public static <T> ApiResponse<T> error(String msg, int code) {
+        return new ApiResponse<>(msg, "ERROR", code, null);
+    }
 }
