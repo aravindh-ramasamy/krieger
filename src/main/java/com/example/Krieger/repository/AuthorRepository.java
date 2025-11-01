@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 public interface AuthorRepository extends JpaRepository<Author, Long> {
     boolean existsByFirstNameAndLastName(String firstName, String lastName);
     boolean existsByFirstNameAndLastNameAndIdNot(String firstName, String lastName, Long id);
+    boolean existsByFirstNameIgnoreCaseAndLastNameIgnoreCase(String firstName, String lastName);
 
     @Query(
             value = """
