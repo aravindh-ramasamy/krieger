@@ -3,9 +3,13 @@ package com.example.Krieger.service;
 import com.example.Krieger.config.RabbitMQConfig;
 import com.example.Krieger.dto.AuthorDTO;
 import com.example.Krieger.dto.AuthorSummaryDTO;
+import com.example.Krieger.dto.BulkDeleteResult;
 import com.example.Krieger.entity.Author;
+import com.example.Krieger.events.EventCodec;
+import com.example.Krieger.events.EventType;
 import com.example.Krieger.exception.CustomException;
 import com.example.Krieger.exception.ResourceNotFoundException;
+import com.example.Krieger.messaging.OutboxPublisher;
 import com.example.Krieger.repository.AuthorRepository;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +19,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import org.springframework.transaction.annotation.Transactional;
+
 
 @Service
 public class AuthorService {
@@ -25,6 +37,9 @@ public class AuthorService {
 
     @Autowired
     private RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    private OutboxPublisher outboxPublisher;
 
     // creates a new author
     public Author createAuthor(AuthorDTO authorDTO) {
@@ -87,6 +102,38 @@ public class AuthorService {
 
     public Author getAuthorById(Long id) {
         return authorRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Author not found with ID: " + id));
+    }
+
+    @Transactional
+    public BulkDeleteResult enqueueDeleteByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new com.example.Krieger.exception.CustomException("ids must not be empty",
+                    org.springframework.http.HttpStatus.BAD_REQUEST);
+        }
+
+        // unique, keep order for predictable reporting
+        LinkedHashSet<Long> unique = new LinkedHashSet<>(ids);
+
+        // find existing in one shot
+        List<Long> existingIds = StreamSupport.stream(
+                        authorRepository.findAllById(unique).spliterator(), false)
+                .map(com.example.Krieger.entity.Author::getId)
+                .collect(Collectors.toList());
+
+        Set<Long> existingSet = new HashSet<>(existingIds);
+
+        // enqueue delete events for existing
+        for (Long id : existingIds) {
+            String payload = EventCodec.encode(EventType.DELETE, id);
+            outboxPublisher.publishAuthorDelete(id);
+        }
+
+        // compute missing
+        List<Long> missing = unique.stream()
+                .filter(id -> !existingSet.contains(id))
+                .collect(Collectors.toList());
+
+        return new BulkDeleteResult(unique.size(), existingIds.size(), missing);
     }
 
     // helpers

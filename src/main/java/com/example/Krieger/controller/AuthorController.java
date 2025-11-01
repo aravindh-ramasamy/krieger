@@ -3,6 +3,8 @@ package com.example.Krieger.controller;
 import com.example.Krieger.dto.ApiResponse;
 import com.example.Krieger.dto.AuthorDTO;
 import com.example.Krieger.dto.AuthorSummaryDTO;
+import com.example.Krieger.dto.BulkDeleteRequest;
+import com.example.Krieger.dto.BulkDeleteResult;
 import com.example.Krieger.entity.Author;
 import com.example.Krieger.exception.CustomException;
 import com.example.Krieger.exception.SuccessException;
@@ -51,7 +53,7 @@ public class AuthorController {
 
     // Update author by ID
     @Operation(summary = "Update an existing author", description = "Update an existing author.")
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     public ResponseEntity<ApiResponse<Author>> updateAuthor(@PathVariable @Positive Long id,
                                                             @Valid @RequestBody AuthorDTO author) {
         Author updatedAuthor = authorService.updateAuthor(id, author);
@@ -60,7 +62,7 @@ public class AuthorController {
 
     // Delete an author by ID
     @Operation(summary = "Delete an existing author", description = "Delete an existing author.")
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     public ResponseEntity<Void> deleteAuthor(@PathVariable Long id) {
         var author = authorService.getAuthorById(id);
         if (author == null) {
@@ -85,14 +87,14 @@ public class AuthorController {
     }
 
     @GetMapping("/{id}")
-    public Object getAuthorById(@PathVariable Long id) {
+    public ResponseEntity<Author> getAuthorById(@PathVariable long id) {
         Author author = authorService.getAuthorById(id);
         if (author == null) {
             throw new CustomException("Author not found with ID: " + id, HttpStatus.NOT_FOUND);
         }
-        // your project uses SuccessException for 2xx elsewhere; return 200 plainly here is also fine:
         return ResponseEntity.ok(author);
     }
+
 
     private Optional<Sort> parseSort(String sortParam) {
         if (sortParam == null || sortParam.isBlank()) return Optional.empty();
@@ -109,5 +111,25 @@ public class AuthorController {
         }
         if (orders.isEmpty()) return Optional.empty();
         return Optional.of(Sort.by(orders));
+    }
+
+    @GetMapping("/bulk-delete")
+    public ResponseEntity<Void> bulkDeleteGetNotAllowed() {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).build();
+    }
+
+    @PostMapping("/bulk-delete")
+    public ResponseEntity<ApiResponse<BulkDeleteResult>> bulkDelete(
+            @org.springframework.web.bind.annotation.RequestBody BulkDeleteRequest req) {
+
+        if (req == null || req.getIds() == null || req.getIds().isEmpty()) {
+            throw new com.example.Krieger.exception.CustomException("ids must not be empty",
+                    HttpStatus.BAD_REQUEST);
+        }
+        BulkDeleteResult result = authorService.enqueueDeleteByIds(req.getIds());
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(ApiResponse.success("Delete events enqueued",
+                        HttpStatus.ACCEPTED.value(), result));
     }
 }
