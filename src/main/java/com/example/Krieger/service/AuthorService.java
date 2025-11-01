@@ -19,10 +19,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -83,6 +80,18 @@ public class AuthorService {
         Author author = getAuthorById(id);
         authorRepository.deleteById(id);
         publishAuthorEvent("DELETE", author);
+    }
+
+    public boolean authorExistsByName(String firstName, String lastName) {
+        String fn = firstName == null ? "" : firstName.trim();
+        String ln = lastName == null ? "" : lastName.trim();
+        if (fn.isEmpty() || ln.isEmpty()) {
+            throw new CustomException("firstName and lastName are required", HttpStatus.BAD_REQUEST);
+        }
+        // normalize – your repo can store normalized columns or compare in query
+        String normFn = fn.toLowerCase(Locale.ROOT);
+        String normLn = ln.toLowerCase(Locale.ROOT);
+        return authorRepository.existsByFirstNameIgnoreCaseAndLastNameIgnoreCase(normFn, normLn);
     }
 
     // Publishes event to Queue with event type

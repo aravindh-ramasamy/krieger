@@ -1,10 +1,6 @@
 package com.example.Krieger.controller;
 
-import com.example.Krieger.dto.ApiResponse;
-import com.example.Krieger.dto.AuthorDTO;
-import com.example.Krieger.dto.AuthorSummaryDTO;
-import com.example.Krieger.dto.BulkDeleteRequest;
-import com.example.Krieger.dto.BulkDeleteResult;
+import com.example.Krieger.dto.*;
 import com.example.Krieger.entity.Author;
 import com.example.Krieger.exception.CustomException;
 import com.example.Krieger.exception.SuccessException;
@@ -93,6 +89,17 @@ public class AuthorController {
             throw new CustomException("Author not found with ID: " + id, HttpStatus.NOT_FOUND);
         }
         return ResponseEntity.ok(author);
+    }
+
+    @GetMapping("/name/exists")
+    public ResponseEntity<?> exists(
+            @RequestParam String firstName,
+            @RequestParam String lastName) {
+
+        boolean exists = authorService.authorExistsByName(firstName, lastName);
+        return ResponseEntity.ok(
+                ApiResponse.success("OK", 200, new ExistsResponse(exists))
+        );
     }
 
 
