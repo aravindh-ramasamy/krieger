@@ -17,6 +17,18 @@ public class Author {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    public Author(String firstName, String lastName) {
+        this.firstName = firstName;
+        this.lastName  = lastName;
+    }
+
+    // Convenience ctor for tests/DTO mapping where an id is known
+    public Author(Long id, String firstName, String lastName) {
+        this.id        = id;
+        this.firstName = firstName;
+        this.lastName  = lastName;
+    }
+
     @Column(nullable = false)
     @NotBlank(message = "firstname is mandatory")
     private String firstName;
