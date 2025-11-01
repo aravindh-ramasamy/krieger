@@ -6,6 +6,7 @@ import com.example.Krieger.dto.AuthorSummaryDTO;
 import com.example.Krieger.entity.Author;
 import com.example.Krieger.exception.CustomException;
 import com.example.Krieger.exception.SuccessException;
+import com.example.Krieger.messaging.OutboxPublisher;
 import com.example.Krieger.service.AuthorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,6 +37,9 @@ public class AuthorController {
     @Autowired
     private AuthorService authorService;
 
+    @Autowired
+    private OutboxPublisher outboxPublisher;
+
     // Create new author
     @Operation(summary = "Create a New Author", description = "Create a New Author.")
     @PostMapping
@@ -57,9 +61,13 @@ public class AuthorController {
     // Delete an author by ID
     @Operation(summary = "Delete an existing author", description = "Delete an existing author.")
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteAuthor(@PathVariable @Positive Long id) {
-        authorService.deleteAuthor(id);
-        throw new SuccessException("Author deleted successfully", HttpStatus.OK, null);
+    public ResponseEntity<Void> deleteAuthor(@PathVariable Long id) {
+        var author = authorService.getAuthorById(id);
+        if (author == null) {
+            throw new CustomException("Author not found with ID: " + id, HttpStatus.NOT_FOUND);
+        }
+        outboxPublisher.publishAuthorDelete(id);
+        return ResponseEntity.accepted().build(); // 202
     }
 
     @GetMapping("/search")

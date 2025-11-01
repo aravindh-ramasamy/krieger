@@ -5,6 +5,7 @@ import com.example.Krieger.dto.AuthorDTO;
 import com.example.Krieger.entity.Author;
 import com.example.Krieger.exception.GlobalExceptionHandler;
 import com.example.Krieger.exception.ValidationExceptionHandler;
+import com.example.Krieger.messaging.OutboxPublisher;
 import com.example.Krieger.service.AuthorService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,8 @@ class AuthorControllerTest {
 
     @MockBean
     private com.example.Krieger.config.services.AuthenticationService authenticationService;
+
+    @MockBean private OutboxPublisher outboxPublisher;
 
     @Test
     void createAuthor_valid_returns201() throws Exception {
