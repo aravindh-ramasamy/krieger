@@ -19,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.example.Krieger.util.Pagination;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -99,24 +100,28 @@ public class DocumentController {
     public ResponseEntity<ApiResponse<PageResult<Document>>> listDocuments(
             @RequestParam(value = "authorId", required = false) Long authorId,
             @RequestParam(value = "q", required = false) String q,
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "20") int size,
+            @RequestParam(value = "page", required = false) String pageParam,
+            @RequestParam(value = "size", required = false) String sizeParam,
             @RequestParam(value = "sort", defaultValue = "id,desc") String sortExpr) {
 
-        // sanitize + clamp
+        // parse & validate (throws 400 via GlobalExceptionHandler on bad input)
+        final int page = Pagination.safePage(pageParam);
+        final int size = Pagination.safeSize(sizeParam);
+
+        // sort + pageable
+        final Sort sort = parseSort(sortExpr);
+        final Pageable pageable = PageRequest.of(page, size, sort);
+
+        // sanitize filters
         q = trimToNull(q);
-        if (page < 0) page = 0;
-        if (size < 1) size = 1;
-        if (size > 100) size = 100;
 
-        Sort sort = parseSort(sortExpr);
-        Pageable pageable = PageRequest.of(page, size, sort);
+        // normalize sort string once
+        final String normalizedSortExpr =
+                (sortExpr == null || sortExpr.isBlank()) ? "id,desc" : sortExpr.trim();
 
-        Page<Document> pageData = documentService.searchDocuments(authorId, q, pageable);
-        String normalizedSortExpr = (sortExpr == null || sortExpr.isBlank()) ? "id,desc"
-                : sortExpr.trim();
-
-        PageResult<Document> body = PageResult.of(pageData, normalizedSortExpr, authorId, q);
+        // query + payload
+        final Page<Document> pageData = documentService.searchDocuments(authorId, q, pageable);
+        final PageResult<Document> body = PageResult.of(pageData, normalizedSortExpr, authorId, q);
 
         throw new SuccessException("Documents retrieved successfully", HttpStatus.OK, body);
     }
