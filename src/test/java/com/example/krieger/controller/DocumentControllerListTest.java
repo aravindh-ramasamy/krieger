@@ -9,6 +9,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
 import org.springframework.data.domain.*;
+import com.example.Krieger.exception.InvalidPaginationException;
+
 
 import java.util.List;
 import java.util.Map;
@@ -38,7 +40,7 @@ class DocumentControllerListTest {
         when(documentService.searchDocuments(null, null, pageable)).thenReturn(page);
 
         SuccessException ex = assertThrows(SuccessException.class, () ->
-                controller.listDocuments(null, null, 0, 20, "id,desc")
+                controller.listDocuments(null, null, "0", "20", "id,desc")
         );
 
         assertEquals("Documents retrieved successfully", ex.getMessage());
@@ -59,38 +61,38 @@ class DocumentControllerListTest {
     }
 
     @Test
-    void listDocuments_withFilters_clampsAndParsesSort_correctlyCallsService() {
-        // page < 0 -> 0; size > 100 -> 100; q trimmed to "rfc"; sort -> title,asc
+    void listDocuments_withFilters_validPagination_parsesSortAndCallsService() {
+        // Given valid inputs: page=2, size=50, sort=title,asc
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
 
-        List<Document> docs = List.of(new Document(), new Document());
-        // The controller will clamp to page=0,size=100 and use title,asc
-        Page<Document> page = new PageImpl<>(docs, PageRequest.of(0, 100, Sort.by(Sort.Direction.ASC, "title")), 2);
+        Pageable expected = PageRequest.of(2, 50, Sort.by(Sort.Direction.ASC, "title"));
+        Page<Document> page = new PageImpl<>(List.of(new Document()), expected, 1);
 
-        when(documentService.searchDocuments(eq(10L), eq("rfc"), any(Pageable.class))).thenReturn(page);
+        when(documentService.searchDocuments(eq(42L), eq("foo"), any(Pageable.class)))
+                .thenReturn(page);
 
+        // When
         SuccessException ex = assertThrows(SuccessException.class, () ->
-                controller.listDocuments(10L, "  rfc  ", -5, 1000, "title,asc")
+                controller.listDocuments(42L, "  foo  ", "2", "50", "title,asc")
         );
 
-        @SuppressWarnings("unchecked")
-        PageResult<Document> body = (PageResult<Document>) ex.getData();
-
-        assertEquals(0, body.page());
-        assertEquals(100, body.size());
-        assertEquals(2, body.items().size());
-        assertEquals("title,asc", body.sort());
-        Map<String, Object> filters = body.filters();
-        assertEquals(10L, filters.get("authorId"));
-        assertEquals("rfc", filters.get("q"));
-
-        verify(documentService).searchDocuments(eq(10L), eq("rfc"), pageableCaptor.capture());
+        // Then: service called with trimmed q and correct pageable
+        verify(documentService).searchDocuments(eq(42L), eq("foo"), pageableCaptor.capture());
         Pageable used = pageableCaptor.getValue();
-        assertEquals(0, used.getPageNumber());
-        assertEquals(100, used.getPageSize());
+        assertEquals(2, used.getPageNumber());
+        assertEquals(50, used.getPageSize());
         Sort.Order order = used.getSort().iterator().next();
         assertEquals("title", order.getProperty());
         assertEquals(Sort.Direction.ASC, order.getDirection());
+    }
+
+    @Test
+    void listDocuments_withFilters_invalidPagination_returns400_andDoesNotCallService() {
+        // Given invalid inputs: page=-1, size=0 -> strict 400
+        assertThrows(InvalidPaginationException.class, () ->
+                controller.listDocuments(42L, "foo", "-1", "0", "title,asc")
+        );
+        verifyNoInteractions(documentService);
     }
 
     @Test
@@ -101,7 +103,7 @@ class DocumentControllerListTest {
         when(documentService.searchDocuments(isNull(), isNull(), any(Pageable.class))).thenReturn(page);
 
         SuccessException ex = assertThrows(SuccessException.class, () ->
-                controller.listDocuments(null, null, 0, 1, "   ")
+                controller.listDocuments(null, null, "0", "1", "   ")
         );
 
         @SuppressWarnings("unchecked")
@@ -116,4 +118,70 @@ class DocumentControllerListTest {
         assertEquals("id", order.getProperty());
         assertEquals(Sort.Direction.DESC, order.getDirection());
     }
+
+  @Test
+    void listDocuments_nonNumericPage_returns400() {
+        // page = "abc" should be rejected by Pagination.safePage -> 400 (InvalidPaginationException)
+        assertThrows(InvalidPaginationException.class, () ->
+                controller.listDocuments(null, null, "abc", "20", "id,desc")
+        );
+        verifyNoInteractions(documentService);
+    }
+
+    @Test
+    void listDocuments_negativePage_returns400() {
+        // page = -1 should be rejected
+        assertThrows(InvalidPaginationException.class, () ->
+                controller.listDocuments(null, null, "-1", "20", "id,desc")
+        );
+        verifyNoInteractions(documentService);
+    }
+
+    @Test
+    void listDocuments_sizeZero_returns400() {
+        // size = 0 should be rejected
+        assertThrows(InvalidPaginationException.class, () ->
+                controller.listDocuments(null, null, "0", "0", "id,desc")
+        );
+        verifyNoInteractions(documentService);
+    }
+
+    @Test
+    void listDocuments_sizeTooLarge_returns400() {
+        // size > MAX_PAGE_SIZE (100) should be rejected
+        assertThrows(InvalidPaginationException.class, () ->
+                controller.listDocuments(null, null, "0", "101", "id,desc")
+        );
+        verifyNoInteractions(documentService);
+    }
+
+    @Test
+    void listDocuments_missingPageAndSize_defaultsTo0And20() {
+        // null page/size should default to 0/20 and succeed
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+
+        Pageable expected = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
+        Page<Document> page = new PageImpl<>(List.of(new Document()), expected, 1);
+
+        when(documentService.searchDocuments(isNull(), isNull(), any(Pageable.class))).thenReturn(page);
+
+        SuccessException ex = assertThrows(SuccessException.class, () ->
+                controller.listDocuments(null, null, null, null, "id,desc")
+        );
+
+        @SuppressWarnings("unchecked")
+        PageResult<Document> body = (PageResult<Document>) ex.getData();
+        assertEquals(0, body.page());
+        assertEquals(20, body.size());
+        assertEquals("id,desc", body.sort());
+
+        verify(documentService).searchDocuments(isNull(), isNull(), pageableCaptor.capture());
+        Pageable used = pageableCaptor.getValue();
+        assertEquals(0, used.getPageNumber());
+        assertEquals(20, used.getPageSize());
+        Sort.Order order = used.getSort().iterator().next();
+        assertEquals("id", order.getProperty());
+        assertEquals(Sort.Direction.DESC, order.getDirection());
+    }
+
 }
