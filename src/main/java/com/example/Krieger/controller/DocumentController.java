@@ -20,6 +20,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.example.Krieger.util.Pagination;
+import org.springframework.http.HttpHeaders;
+import com.example.Krieger.util.PaginationHeaders;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -122,8 +124,10 @@ public class DocumentController {
         // query + payload
         final Page<Document> pageData = documentService.searchDocuments(authorId, q, pageable);
         final PageResult<Document> body = PageResult.of(pageData, normalizedSortExpr, authorId, q);
-
-        throw new SuccessException("Documents retrieved successfully", HttpStatus.OK, body);
+        final HttpHeaders headers = PaginationHeaders.build(pageData);
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(ApiResponse.success("Documents retrieved successfully", HttpStatus.OK.value(), body));
     }
 
     // ---- helpers for pagination response & sort parsing ----
