@@ -1,6 +1,7 @@
 package com.example.Krieger.controller;
 
 import com.example.Krieger.dto.ApiResponse;
+import com.example.Krieger.dto.CountResult;
 import com.example.Krieger.dto.DocumentDTO;
 import com.example.Krieger.entity.Document;
 import com.example.Krieger.exception.CustomException;
@@ -176,5 +177,23 @@ public class DocumentController {
         return t.isEmpty() ? null : t;
     }
 
+    @Operation(summary = "Count Documents", description = "Returns the total number of documents matching optional filters.")
+    @GetMapping("/count")
+    public ResponseEntity<ApiResponse<CountResult>> countDocuments(
+            @RequestParam(value = "authorId", required = false) Long authorId,
+            @RequestParam(value = "q", required = false) String q) {
+
+        // Reuse your sanitizer
+        q = trimToNull(q);
+
+        // We only need totalElements; query a 1-sized page to reuse existing service
+        Pageable oneItem = PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "id"));
+        Page<Document> page = documentService.searchDocuments(authorId, q, oneItem);
+
+        CountResult result = new CountResult(page.getTotalElements());
+        return ResponseEntity.ok(
+                ApiResponse.success("Count retrieved successfully", HttpStatus.OK.value(), result)
+        );
+    }
 
 }
