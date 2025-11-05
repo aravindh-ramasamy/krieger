@@ -36,7 +36,7 @@ public class Consumer {
 
         // If DELETE event type, It removes the author and their associated documents.
         if ("DELETE".equals(eventType)) {
-            List<Document> documents = documentRepository.findByAuthorId(authorId);
+            List<Document> documents = documentRepository.findByAuthor_Id(authorId);
             documentRepository.deleteAll(documents);
             authorRepository.deleteById(authorId);
             System.out.println("Author and documents deleted");

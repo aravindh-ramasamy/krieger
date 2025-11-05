@@ -7,21 +7,19 @@ import com.example.Krieger.entity.Document;
 import com.example.Krieger.exception.CustomException;
 import com.example.Krieger.exception.SuccessException;
 import com.example.Krieger.service.DocumentService;
+import com.example.Krieger.util.CsvEscaper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.example.Krieger.util.Pagination;
-import org.springframework.http.HttpHeaders;
 import com.example.Krieger.util.PaginationHeaders;
 
 import java.util.LinkedHashMap;
@@ -162,7 +160,7 @@ public class DocumentController {
         }
     }
 
-// --------------- helpers ----------------
+    // --------------- helpers ----------------
     /** Trim title/body/reference and convert blanks to null so controller checks behave as intended. */
     private static void sanitize(DocumentDTO dto) {
         if (dto == null) return;
@@ -183,10 +181,9 @@ public class DocumentController {
             @RequestParam(value = "authorId", required = false) Long authorId,
             @RequestParam(value = "q", required = false) String q) {
 
-        // Reuse your sanitizer
         q = trimToNull(q);
 
-        // We only need totalElements; query a 1-sized page to reuse existing service
+        // Query a 1-sized page to reuse existing service and read totalElements
         Pageable oneItem = PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "id"));
         Page<Document> page = documentService.searchDocuments(authorId, q, oneItem);
 
@@ -196,4 +193,107 @@ public class DocumentController {
         );
     }
 
+    @Operation(
+            summary = "Export current page as CSV",
+            description = "Exports the current page of documents using the same filters and sorting as the list endpoint."
+    )
+    @GetMapping(value = "/export.csv", produces = "text/csv")
+    public ResponseEntity<String> exportCsv(
+            @RequestParam(value = "authorId", required = false) Long authorId,
+            @RequestParam(value = "q", required = false) String q,
+            @RequestParam(value = "page", required = false) String pageParam,
+            @RequestParam(value = "size", required = false) String sizeParam,
+            @RequestParam(value = "sort", defaultValue = "id,desc") String sortExpr) {
+
+        // reuse your existing helpers
+        final int page = Pagination.safePage(pageParam);
+        final int size = Pagination.safeSize(sizeParam);
+        final Sort sort = parseSort(sortExpr);
+        final Pageable pageable = PageRequest.of(page, size, sort);
+        q = trimToNull(q);
+
+        final Page<Document> pageData = documentService.searchDocuments(authorId, q, pageable);
+
+        // build CSV
+        StringBuilder sb = new StringBuilder(256 + pageData.getNumberOfElements() * 128);
+        // header
+        sb.append("id,title,authorId,createdAt,updatedAt,contentPreview").append("\n");
+
+        for (Document d : pageData.getContent()) {
+            String id = d.getId() == null ? "" : String.valueOf(d.getId());
+            String title = safeStr(getTitle(d));
+            String author = getAuthorIdString(d); // <-- updated to normalize 0/null → ""
+            String created = toStringSafe(getCreatedAt(d));
+            String updated = toStringSafe(getUpdatedAt(d));
+            String preview = CsvEscaper.preview(getContent(d), 120);
+
+            sb.append(CsvEscaper.escape(id)).append(',')
+                    .append(CsvEscaper.escape(title)).append(',')
+                    .append(CsvEscaper.escape(author)).append(',')
+                    .append(CsvEscaper.escape(created)).append(',')
+                    .append(CsvEscaper.escape(updated)).append(',')
+                    .append(CsvEscaper.escape(preview)).append('\n');
+        }
+
+        // filename
+        String filename = "documents_" + java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
+                .format(java.time.LocalDateTime.now()) + ".csv";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
+        headers.setContentType(new MediaType("text", "csv"));
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(sb.toString());
+    }
+
+    // ---- small helpers to safely access entity fields ----
+    private static String safeStr(String v) { return v == null ? "" : v; }
+
+    private static String getTitle(Document d) { return d.getTitle(); }
+    private static String getContent(Document d) { return d.getContent(); } // alias to body, provided on entity
+
+    private static Object getCreatedAt(Document d) { return d.getCreatedAt(); }
+    private static Object getUpdatedAt(Document d) { return d.getUpdatedAt(); }
+
+    /**
+     * Resolve authorId as string:
+     * - use Document#getAuthorId() if present;
+     * - treat null or 0 as empty string;
+     * - fallback to author.getId() if available;
+     * - otherwise empty.
+     */
+    private static String getAuthorIdString(Document d) {
+        try {
+            var m = d.getClass().getMethod("getAuthorId");
+            Object val = m.invoke(d);
+            if (val == null) return "";
+            if (val instanceof Number) {
+                long v = ((Number) val).longValue();
+                return v == 0L ? "" : String.valueOf(v);
+            }
+            String s = String.valueOf(val);
+            return ("0".equals(s) || "null".equalsIgnoreCase(s)) ? "" : s;
+        } catch (Exception ignore) {
+            // fallback: author.getId()
+            try {
+                var getAuthor = d.getClass().getMethod("getAuthor");
+                Object author = getAuthor.invoke(d);
+                if (author != null) {
+                    var getId = author.getClass().getMethod("getId");
+                    Object id = getId.invoke(author);
+                    if (id == null) return "";
+                    if (id instanceof Number && ((Number) id).longValue() == 0L) return "";
+                    String s = String.valueOf(id);
+                    return ("0".equals(s) || "null".equalsIgnoreCase(s)) ? "" : s;
+                }
+            } catch (Exception ignored) { /* swallow */ }
+            return "";
+        }
+    }
+
+    private static String toStringSafe(Object o) {
+        return o == null ? "" : o.toString();
+    }
 }
