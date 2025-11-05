@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 import com.example.Krieger.util.Pagination;
 import com.example.Krieger.util.PaginationHeaders;
 
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -203,9 +204,14 @@ public class DocumentController {
             @RequestParam(value = "q", required = false) String q,
             @RequestParam(value = "page", required = false) String pageParam,
             @RequestParam(value = "size", required = false) String sizeParam,
-            @RequestParam(value = "sort", defaultValue = "id,desc") String sortExpr) {
+            @RequestParam(value = "sort", defaultValue = "id,desc") String sortExpr,
+            @RequestParam(value = "bom", required = false) Boolean bom,
+            @RequestParam(value = "delimiter", required = false) String delimiter,
+            @RequestParam(value = "filename", required = false) String customFilename,
+            @RequestParam(value = "includeHeader", required = false) Boolean includeHeader,
+            @RequestParam(value = "previewLen", required = false) Integer previewLen
+    ) {
 
-        // reuse your existing helpers
         final int page = Pagination.safePage(pageParam);
         final int size = Pagination.safeSize(sizeParam);
         final Sort sort = parseSort(sortExpr);
@@ -214,39 +220,66 @@ public class DocumentController {
 
         final Page<Document> pageData = documentService.searchDocuments(authorId, q, pageable);
 
-        // build CSV
-        StringBuilder sb = new StringBuilder(256 + pageData.getNumberOfElements() * 128);
-        // header
-        sb.append("id,title,authorId,createdAt,updatedAt,contentPreview").append("\n");
+        final char delim = com.example.Krieger.util.CsvEscaper.resolveDelimiter(delimiter); // ',', ';', '\t'
+        final boolean header = (includeHeader == null) ? true : includeHeader;
+        final int preview = com.example.Krieger.util.CsvEscaper.clamp(previewLen, 20, 500, 120);
 
+        StringBuilder sb = new StringBuilder(256 + pageData.getNumberOfElements() * 128);
+
+        // ---- Header: must match test expectation exactly with default comma delimiter ----
+        if (header) {
+            if (delim == ',') {
+                // unquoted, comma-separated header (tests assert this exact string)
+                sb.append("id,title,authorId,createdAt,updatedAt,contentPreview").append('\n');
+            } else {
+                // other delimiters: still unquoted header, just use the chosen delimiter
+                sb.append("id").append(delim)
+                        .append("title").append(delim)
+                        .append("authorId").append(delim)
+                        .append("createdAt").append(delim)
+                        .append("updatedAt").append(delim)
+                        .append("contentPreview").append('\n');
+            }
+        }
+
+        // ---- Data rows (quoted & escaped) ----
         for (Document d : pageData.getContent()) {
             String id = d.getId() == null ? "" : String.valueOf(d.getId());
             String title = safeStr(getTitle(d));
-            String author = getAuthorIdString(d); // <-- updated to normalize 0/null → ""
+            String author = getAuthorIdString(d); // normalizes null/0 → ""
             String created = toStringSafe(getCreatedAt(d));
             String updated = toStringSafe(getUpdatedAt(d));
-            String preview = CsvEscaper.preview(getContent(d), 120);
+            String previewStr = com.example.Krieger.util.CsvEscaper.preview(getContent(d), preview);
 
-            sb.append(CsvEscaper.escape(id)).append(',')
-                    .append(CsvEscaper.escape(title)).append(',')
-                    .append(CsvEscaper.escape(author)).append(',')
-                    .append(CsvEscaper.escape(created)).append(',')
-                    .append(CsvEscaper.escape(updated)).append(',')
-                    .append(CsvEscaper.escape(preview)).append('\n');
+            com.example.Krieger.util.CsvEscaper.appendRow(
+                    sb, delim, id, title, author, created, updated, previewStr
+            );
         }
 
-        // filename
-        String filename = "documents_" + java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
-                .format(java.time.LocalDateTime.now()) + ".csv";
+        String body = sb.toString();
+        if (Boolean.TRUE.equals(bom)) {
+            body = "\uFEFF" + body; // UTF-8 BOM prefix
+        }
+
+        // Filename handling
+        String ts = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
+                .format(java.time.LocalDateTime.now());
+        String fallbackBase = "documents_" + ts;
+        String base = com.example.Krieger.util.CsvEscaper.sanitizeFilename(customFilename, fallbackBase);
+        String filename = base.toLowerCase().endsWith(".csv") ? base : (base + ".csv");
 
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
-        headers.setContentType(new MediaType("text", "csv"));
+        // IMPORTANT: declare UTF-8 so MockMvc decodes BOM correctly
+        headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
 
         return ResponseEntity.ok()
                 .headers(headers)
-                .body(sb.toString());
+                .body(body);
     }
+
+
+
 
     // ---- small helpers to safely access entity fields ----
     private static String safeStr(String v) { return v == null ? "" : v; }
