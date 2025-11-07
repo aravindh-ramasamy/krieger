@@ -3,12 +3,14 @@ package com.example.Krieger.service;
 import com.example.Krieger.dto.DocumentDTO;
 import com.example.Krieger.entity.Author;
 import com.example.Krieger.entity.Document;
+import com.example.Krieger.exception.CustomException;
 import com.example.Krieger.exception.ResourceNotFoundException;
 import com.example.Krieger.repository.AuthorRepository;
 import com.example.Krieger.repository.DocumentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
@@ -140,5 +142,13 @@ public class DocumentService {
         if (value != null && value.length() > max) {
             throw new IllegalArgumentException(field + " must be <= " + max + " characters");
         }
+    }
+
+    @Transactional
+    public Document updateTitle(Long id, String newTitle) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new CustomException("Document not found with ID: " + id, HttpStatus.NOT_FOUND));
+        doc.setTitle(newTitle);
+        return documentRepository.save(doc);
     }
 }

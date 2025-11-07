@@ -1,9 +1,6 @@
 package com.example.Krieger.controller;
 
-import com.example.Krieger.dto.ApiResponse;
-import com.example.Krieger.dto.CountResult;
-import com.example.Krieger.dto.DocumentDTO;
-import com.example.Krieger.dto.SummaryResult;
+import com.example.Krieger.dto.*;
 import com.example.Krieger.entity.Document;
 import com.example.Krieger.exception.CustomException;
 import com.example.Krieger.exception.SuccessException;
@@ -409,6 +406,54 @@ public class DocumentController {
             }
         } catch (Exception ignore) { /* no-op */ }
         return null;
+    }
+
+    @io.swagger.v3.oas.annotations.Operation(
+            summary = "Update only the title of a document",
+            description = "Trims and validates the provided title; max length 200."
+    )
+    @org.springframework.web.bind.annotation.PatchMapping(
+            value = "/{id}/title",
+            consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE,
+            produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE
+    )
+    public org.springframework.http.ResponseEntity<java.util.Map<String, Object>> updateTitle(
+            @org.springframework.web.bind.annotation.PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestBody com.example.Krieger.dto.UpdateTitleRequest body
+    ) {
+        if (body == null) {
+            java.util.Map<String, Object> resp = new java.util.LinkedHashMap<>();
+            resp.put("message", "Request body is required");
+            resp.put("code", 400);
+            resp.put("data", null);
+            return org.springframework.http.ResponseEntity.badRequest().body(resp);
+        }
+
+        String raw = body.getTitle();
+        String trimmed = (raw == null) ? null : raw.trim();
+
+        if (trimmed == null || trimmed.isEmpty()) {
+            java.util.Map<String, Object> resp = new java.util.LinkedHashMap<>();
+            resp.put("message", "Title must not be blank");
+            resp.put("code", 400);
+            resp.put("data", null);
+            return org.springframework.http.ResponseEntity.badRequest().body(resp);
+        }
+        if (trimmed.length() > 200) {
+            java.util.Map<String, Object> resp = new java.util.LinkedHashMap<>();
+            resp.put("message", "Title must be at most 200 characters");
+            resp.put("code", 400);
+            resp.put("data", null);
+            return org.springframework.http.ResponseEntity.badRequest().body(resp);
+        }
+
+        com.example.Krieger.entity.Document updated = documentService.updateTitle(id, trimmed);
+
+        java.util.Map<String, Object> resp = new java.util.LinkedHashMap<>();
+        resp.put("message", "Title updated");
+        resp.put("code", 200);
+        resp.put("data", updated);
+        return org.springframework.http.ResponseEntity.ok(resp);
     }
 
 }
