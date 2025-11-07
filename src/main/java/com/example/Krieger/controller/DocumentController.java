@@ -3,6 +3,7 @@ package com.example.Krieger.controller;
 import com.example.Krieger.dto.ApiResponse;
 import com.example.Krieger.dto.CountResult;
 import com.example.Krieger.dto.DocumentDTO;
+import com.example.Krieger.dto.SummaryResult;
 import com.example.Krieger.entity.Document;
 import com.example.Krieger.exception.CustomException;
 import com.example.Krieger.exception.SuccessException;
@@ -329,4 +330,85 @@ public class DocumentController {
     private static String toStringSafe(Object o) {
         return o == null ? "" : o.toString();
     }
+
+    @Operation(summary = "Get a Document Summary",
+            description = "Returns metadata + a short preview without sending the full body/content.")
+    @GetMapping("/{id}/summary")
+    public ResponseEntity<Map<String, Object>> getDocumentSummary(
+            @PathVariable Long id,
+            @RequestParam(value = "previewLen", required = false) Integer previewLen,
+            @RequestParam(value = "stripHtml", required = false) Boolean stripHtml
+    ) {
+        // defaults: previewLen default=200, clamped to [50..500]; stripHtml default=true
+        final int len = clamp(previewLen, 200, 50, 500);
+        final boolean doStripHtml = (stripHtml == null) ? true : stripHtml.booleanValue();
+
+        // load
+        Document d = documentService.getDocumentById(id);
+        if (d == null) {
+            throw new com.example.Krieger.exception.CustomException("Document not found with ID: " + id,
+                    org.springframework.http.HttpStatus.NOT_FOUND);
+        }
+
+        // compute preview (always a non-null String)
+        String body = getContent(d);
+        if (doStripHtml) {
+            body = com.example.Krieger.util.TextSanitizer.stripHtml(body);
+        }
+        String preview = com.example.Krieger.util.CsvEscaper.preview(body == null ? "" : body, len);
+
+        // author id (prefer convenience getter if present)
+        Long authorId = extractAuthorId(d);
+
+        // build a plain JSON object with { message, code, data:{...} }
+        Map<String, Object> data = new java.util.LinkedHashMap<>();
+        data.put("id", d.getId());
+        data.put("title", safeStr(getTitle(d)));
+        data.put("authorId", authorId);
+        data.put("createdAt", (d.getCreatedAt() instanceof java.time.Instant) ? d.getCreatedAt() : null);
+        data.put("updatedAt", (d.getUpdatedAt() instanceof java.time.Instant) ? d.getUpdatedAt() : null);
+        data.put("preview", preview);                 // string
+        data.put("previewLength", preview.length());  // numeric length for assertions
+
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("message", "Summary retrieved");
+        response.put("code", 200);
+        response.put("data", data);
+
+        return ResponseEntity.ok(response);
+    }
+
+
+// ---------- keep these small helpers with your other helpers ----------
+
+    private static int clamp(Integer val, int defaultVal, int min, int max) {
+        int v = (val == null) ? defaultVal : val.intValue();
+        if (v < min) v = min;
+        if (v > max) v = max;
+        return v;
+    }
+
+    /** Prefer Document#getAuthorId(); fallback to author.getId() via reflection; else null. */
+    private static Long extractAuthorId(Document d) {
+        try {
+            var m = d.getClass().getMethod("getAuthorId");
+            Object val = m.invoke(d);
+            if (val instanceof Number) return ((Number) val).longValue();
+            if (val != null) return Long.valueOf(String.valueOf(val));
+        } catch (Exception ignore) {
+            // ignore
+        }
+        try {
+            var m = d.getClass().getMethod("getAuthor");
+            Object author = m.invoke(d);
+            if (author != null) {
+                var mid = author.getClass().getMethod("getId");
+                Object id = mid.invoke(author);
+                if (id instanceof Number) return ((Number) id).longValue();
+                if (id != null) return Long.valueOf(String.valueOf(id));
+            }
+        } catch (Exception ignore) { /* no-op */ }
+        return null;
+    }
+
 }
