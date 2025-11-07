@@ -10,22 +10,29 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-// JPA repository for Document
 @Repository
 public interface DocumentRepository extends JpaRepository<Document, Long> {
 
-    List<Document> findByAuthorId(Long authorId); // finds document by author ID
+    // ✅ FIX: traverse the @ManyToOne relation (Document.author.id)
+    List<Document> findByAuthor_Id(Long authorId);
 
-    @Query(
-            "SELECT d FROM Document d " +
-                    "WHERE (:authorId IS NULL OR d.author.id = :authorId) " +
-                    "AND (" +
-                    "  :q IS NULL " +
-                    "  OR LOWER(d.title) LIKE LOWER(CONCAT('%', :q, '%')) " +
-                    "  OR LOWER(d.body) LIKE LOWER(CONCAT('%', :q, '%')) " +
-                    "  OR LOWER(d.references) LIKE LOWER(CONCAT('%', :q, '%'))" +
-                    ")"
-    )
+    // 👉 Used by /api/documents/suggest (no author filter)
+    List<Document> findByTitleContainingIgnoreCase(String q, Pageable pageable);
+
+    // 👉 Used by /api/documents/suggest (with author filter)
+    List<Document> findByTitleContainingIgnoreCaseAndAuthor_Id(String q, Long authorId, Pageable pageable);
+
+    // 👉 Reusable search for list/count endpoints
+    @Query("""
+           SELECT d FROM Document d
+           WHERE (:authorId IS NULL OR d.author.id = :authorId)
+             AND (
+                 :q IS NULL
+                 OR LOWER(d.title)      LIKE LOWER(CONCAT('%', :q, '%'))
+                 OR LOWER(d.body)       LIKE LOWER(CONCAT('%', :q, '%'))
+                 OR LOWER(d.references) LIKE LOWER(CONCAT('%', :q, '%'))
+             )
+           """)
     Page<Document> search(@Param("authorId") Long authorId,
                           @Param("q") String q,
                           Pageable pageable);

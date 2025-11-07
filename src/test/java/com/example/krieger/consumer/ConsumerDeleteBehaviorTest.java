@@ -26,14 +26,14 @@ class ConsumerDeleteBehaviorTest {
     @Test
     void deleteMessage_deletesAuthorAndDocs() {
         // Given
-        when(documentRepository.findByAuthorId(42L))
+        when(documentRepository.findByAuthor_Id(42L))
                 .thenReturn(List.of(new Document()));
 
         // When
         consumer.consumeMessage("DELETE: 42");
 
         // Then
-        verify(documentRepository).findByAuthorId(42L);
+        verify(documentRepository).findByAuthor_Id(42L);
         verify(documentRepository).deleteAll(anyList());
         verify(authorRepository).deleteById(42L);
         verifyNoMoreInteractions(documentRepository, authorRepository);
