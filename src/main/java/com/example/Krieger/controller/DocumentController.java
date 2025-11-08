@@ -5,7 +5,7 @@ import com.example.Krieger.entity.Document;
 import com.example.Krieger.exception.CustomException;
 import com.example.Krieger.exception.SuccessException;
 import com.example.Krieger.service.DocumentService;
-import com.example.Krieger.util.CsvEscaper;
+import com.example.Krieger.util.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
@@ -17,8 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.example.Krieger.util.Pagination;
-import com.example.Krieger.util.PaginationHeaders;
 
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -502,6 +500,46 @@ public class DocumentController {
             return ((java.time.Instant) o).toString(); // e.g., 2025-10-05T12:00:00Z
         }
         return null;
+    }
+
+    @io.swagger.v3.oas.annotations.Operation(
+            summary = "Document text metrics",
+            description = "Returns word/char/line counts and an estimated reading time."
+    )
+    @org.springframework.web.bind.annotation.GetMapping("/{id}/metrics")
+    public org.springframework.http.ResponseEntity<ApiResponse<TextMetricsResult>> getDocumentMetrics(
+            @org.springframework.web.bind.annotation.PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestParam(value = "stripHtml", required = false) Boolean stripHtml,
+            @org.springframework.web.bind.annotation.RequestParam(value = "wpm", required = false) Integer wpmParam
+    ) {
+        final boolean doStripHtml = (stripHtml == null) ? true : stripHtml.booleanValue();
+        final int wpm = TextMetrics.clampWpm(wpmParam, 200); // default 200, clamp [100..400]
+
+        Document d = documentService.getDocumentById(id);
+        if (d == null) {
+            throw new com.example.Krieger.exception.CustomException("Document not found with ID: " + id,
+                    org.springframework.http.HttpStatus.NOT_FOUND);
+        }
+
+        String text = getContent(d);                 // reuse your existing helper
+        if (text == null) text = "";
+        if (doStripHtml) {
+            text = TextSanitizer.stripHtml(text);    // reuse your sanitizer (HTML → spaces, collapse)
+        }
+        String normalized = TextMetrics.normalizeNewlines(text);
+
+        int words = TextMetrics.countWords(normalized);
+        int characters = TextMetrics.countChars(normalized);
+        int lines = TextMetrics.countLines(normalized);
+        int readingTimeSeconds = TextMetrics.estimateReadingTimeSeconds(words, wpm);
+
+        TextMetricsResult result = new TextMetricsResult(
+                d.getId(), words, characters, lines, readingTimeSeconds
+        );
+
+        return org.springframework.http.ResponseEntity.ok(
+                ApiResponse.success("Metrics computed", 200, result)
+        );
     }
 
 
