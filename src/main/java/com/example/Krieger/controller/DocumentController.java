@@ -456,4 +456,53 @@ public class DocumentController {
         return org.springframework.http.ResponseEntity.ok(resp);
     }
 
+    @io.swagger.v3.oas.annotations.Operation(
+            summary = "Recent documents",
+            description = "Returns the most recently updated documents with minimal fields. Supports optional authorId and q filters."
+    )
+    @org.springframework.web.bind.annotation.GetMapping("/recent")
+    public org.springframework.http.ResponseEntity<ApiResponse<java.util.List<RecentItem>>> recent(
+            @org.springframework.web.bind.annotation.RequestParam(value = "limit", required = false) Integer limitParam,
+            @org.springframework.web.bind.annotation.RequestParam(value = "authorId", required = false) Long authorId,
+            @org.springframework.web.bind.annotation.RequestParam(value = "q", required = false) String q
+    ) {
+        final int limit = clamp(limitParam, 10, 1, 50); // default 10, clamp [1..50]
+        q = trimToNull(q);
+
+        org.springframework.data.domain.Sort sort =
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "updatedAt")
+                        .and(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "id"));
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(0, limit, sort);
+
+        org.springframework.data.domain.Page<com.example.Krieger.entity.Document> page =
+                documentService.searchDocuments(authorId, q, pageable);
+
+        java.util.List<RecentItem> items = page.getContent().stream()
+                .map(d -> new RecentItem(
+                        d.getId(),
+                        safeStr(getTitle(d)),
+                        extractAuthorId(d),
+                        toIsoString(d.getUpdatedAt())
+                ))
+                .toList();
+
+        // NOTE: your ApiResponse has fields: msg, status, code, data
+        return org.springframework.http.ResponseEntity.ok(
+                ApiResponse.success("Recent documents", 200, items)
+        );
+    }
+
+    private static java.time.Instant toInstantOrNull(Object o) {
+        return (o instanceof java.time.Instant) ? (java.time.Instant) o : null;
+    }
+
+    private static String toIsoString(Object o) {
+        if (o instanceof java.time.Instant) {
+            return ((java.time.Instant) o).toString(); // e.g., 2025-10-05T12:00:00Z
+        }
+        return null;
+    }
+
+
 }
